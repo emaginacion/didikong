@@ -19,26 +19,25 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
  
   postgres:
-  image: postgres:13
-  environment:
-    - POSTGRES_USER=n8n
-    - POSTGRES_PASSWORD=n8n
-    - POSTGRES_DB=n8n
-  volumes:
-    - ./postgres_data:/var/lib/postgresql/data
-  command:
-    - "postgres"
-    - "-c"
-    - "max_connections=1000"
-    - "-c"
-    - "shared_preload_libraries=pg_stat_statements"
-  healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
-    interval: 5s
-    timeout: 5s
-    retries: 5
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n
+      - POSTGRES_DB=n8n
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   supabase-studio:
     image: supabase/studio:latest
