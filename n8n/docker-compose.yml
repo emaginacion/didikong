@@ -44,33 +44,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      STUDIO_PG_META_URL: http://meta:8080
+      STUDIO_PG_META_URL: http://meta:8081
       POSTGRES_PASSWORD: n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  kong:
-    image: kong:2.8.1
-    ports:
-      - "8000:8000/tcp"
-      - "8443:8443/tcp"
-    environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
-    volumes:
-      - ./kong.yml:/var/lib/kong/kong.yml
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  auth:
-    image: supabase/gotrue:v2.82.4
-    environment:
-      GOTRUE_API_HOST: 0.0.0.0
-      GOTRUE_API_PORT: 9999
-      API_EXTERNAL_URL: http://localhost:8000
-      DATABASE_URL: postgres://n8n:n8n@postgres:5432/n8n?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,17 +56,19 @@ services:
       PGRST_DB_URI: postgres://n8n:n8n@postgres:5432/n8n
       PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
     depends_on:
       postgres:
         condition: service_healthy
 
   meta:
     image: supabase/postgres-meta:v0.68.0
+    ports:
+      - "8081:8081"
     environment:
-      PG_META_PORT: 8080
+      PG_META_PORT: 8081
       PG_META_DB_HOST: postgres
       PG_META_DB_PASSWORD: n8n
+      PG_META_DB_USER: n8n
     depends_on:
       postgres:
         condition: service_healthy
