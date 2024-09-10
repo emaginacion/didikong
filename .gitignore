@@ -5,3 +5,5 @@ jabber/ejabberd_data/
 node_modules/
 
 .venv/
+tigase/postgres/
+tigase/tigase-server/logs/
