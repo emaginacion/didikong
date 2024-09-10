@@ -1,2 +1,7 @@
 n8n/postgres_data/
 .DS_Store
+jabber/xmpp-bridge/node_modules/
+jabber/ejabberd_data/
+node_modules/
+
+.venv/

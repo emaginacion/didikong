@@ -1,0 +1,24 @@
+version: '3'
+services:
+  ejabberd:
+    image: ejabberd/ecs:latest
+    container_name: ejabberd_server
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "5222:5222"   # Puerto XMPP para cliente a servidor
+      - "5269:5269"   # Puerto XMPP para servidor a servidor
+      - "5280:5280"   # Puerto HTTP para administración
+    volumes:
+      - ./ejabberd_data:/home/ejabberd/database
+      - ./config:/home/ejabberd/conf
+    environment:
+      - ERLANG_NODE=ejabberd@localhost
+      - XMPP_DOMAIN=profound-purely-filly.ngrok-free.app
+      - EJABBERD_ADMINS=admin@profound-purely-filly.ngrok-free.app
+    networks:
+      - jabber_network
+
+networks:
+  jabber_network:
+    driver: bridge

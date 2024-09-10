@@ -53,10 +53,15 @@ services:
 
   rest:
     image: postgrest/postgrest:v10.1.2
+    ports:
+      - "3333:3000"
     environment:
       PGRST_DB_URI: postgres://n8n:n8n@postgres:5432/n8n
       PGRST_DB_SCHEMA: public
-      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_ANON_ROLE: n8n
+      PGRST_JWT_SECRET: ""
+      PGRST_JWT_AUD: ""
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3333
     depends_on:
       postgres:
         condition: service_healthy
