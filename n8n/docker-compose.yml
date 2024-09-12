@@ -31,12 +31,14 @@ services:
       - DB_POSTGRESDB_USER=n8n
       - DB_POSTGRESDB_PASSWORD=n8n
       - N8N_HOST=SoulVault.yalovio.com
-      - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - NODE_ENV=production
       - WEBHOOK_URL=https://SoulVault.yalovio.com/
       - N8N_EDITOR_BASE_URL=https://SoulVault.yalovio.com
       - GENERIC_TIMEZONE=America/New_York
+      - N8N_PORT=5678
+    ports:
+      - "5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
@@ -134,8 +136,27 @@ services:
       test: ["CMD", "wget", "--spider", "http://localhost:8081/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 60s
+
+  webserver:
+    image: nginx:alpine
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    networks:
+      - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webserver.rule=Host(`www.soulvault.yalovio.com`)"
+      - "traefik.http.routers.webserver.entrypoints=websecure"
+      - "traefik.http.routers.webserver.tls.certresolver=myresolver"
+      - "traefik.http.services.webserver.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 networks:
   n8n-network:
