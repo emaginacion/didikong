@@ -1,4 +1,6 @@
-admins = [ 'admin@furioso.yalovio.com' ]
+admins = [
+    'admin@furioso.yalovio.com'
+]
 'config-type' = 'default'
 debug = [ 'server' ]
 'default-virtual-host' = 'furioso.yalovio.com'
@@ -10,15 +12,19 @@ dataSource () {
 ext () {}
 'ext-man' () {}
 http () {
-    rest () {}
     setup () {
         'admin-password' = 'Koko2020'
         'admin-user' = 'admin'
     }
+    rest () {
+        'api-keys' = [ 'e23f67824-14d7-4556-b280-f9e7f5d81f18' ]
+  }
 }
+
+sess-man () {
+    'trusted' = [ 'http@{clusterNode}' ]
+}
+
 pubsub () {
-    trusted = [ 'http@{clusterNode}' ]
-}
-'sess-man' () {
     trusted = [ 'http@{clusterNode}' ]
 }
