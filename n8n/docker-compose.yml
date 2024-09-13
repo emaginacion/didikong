@@ -1,6 +1,48 @@
 version: "3.8"
 
 services:
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.tigase-http.address=:8082"
+      - "--entrypoints.traefik.address=:8081"
+      - "--entrypoints.n8n.address=:8083"
+      - "--entrypoints.xmpp-client.address=:5222"
+      - "--entrypoints.xmpp-client-tls.address=:5223"
+      - "--entrypoints.xmpp-server.address=:5269"
+      - "--entrypoints.bosh.address=:5280"
+      - "--entrypoints.websocket.address=:5291"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=jairo@dosycuarto.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8081"
+      - "8082:8082"
+      - "8083:8083"
+      - "5222:5222"
+      - "5223:5223"
+      - "5269:5269"
+      - "5280:5280"
+      - "5291:5291"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+    networks:
+      - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=HostRegexp(`{any:.*}`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=traefik"
+
   n8n:
     image: n8nio/n8n
     environment:
@@ -16,8 +58,7 @@ services:
       - WEBHOOK_URL=https://alamo.yalovio.com/
       - N8N_EDITOR_BASE_URL=https://alamo.yalovio.com
       - GENERIC_TIMEZONE=America/New_York
-    ports:
-      - "8083:5678"
+      - N8N_PORT=5678
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
@@ -25,6 +66,12 @@ services:
         condition: service_healthy
     networks:
       - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`alamo.yalovio.com`)"
+      - "traefik.http.routers.n8n.entrypoints=n8n"
+      - "traefik.http.routers.n8n.tls.certresolver=myresolver"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
 
   postgres:
     image: postgres:13
@@ -43,6 +90,25 @@ services:
     networks:
       - n8n-network
 
+  webserver:
+    image: nginx:alpine
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    networks:
+      - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webserver.rule=Host(`www.soulvault.yalovio.com`)"
+      - "traefik.http.routers.webserver.entrypoints=websecure"
+      - "traefik.http.routers.webserver.tls.certresolver=myresolver"
+      - "traefik.http.services.webserver.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   tigase:
     image: "wojciechkapciatig/tests:nightly"
     restart: unless-stopped
@@ -50,15 +116,6 @@ services:
     depends_on:
       tigase-db:
         condition: service_healthy
-    ports:
-      - "8080:8080"  # HTTP API y interfaz de administración
-      - "5222:5222"  # XMPP client-to-server
-      - "5223:5223"  # XMPP client-to-server over TLS
-      - "5269:5269"  # XMPP server-to-server
-      - "5280:5280"  # BOSH
-      - "5281:5281"  # BOSH over TLS
-      - "5290:5290"  # WebSocket
-      - "5291:5291"  # WebSocket over TLS
     volumes:
       - ./tigase-server/etc:/home/tigase/tigase-server/etc
       - ./tigase-server/data:/home/tigase/tigase-server/data
@@ -75,6 +132,42 @@ services:
       - DEFAULT_VIRTUAL_DOMAIN=redloop.yalovio.com
     networks:
       - n8n-network
+    labels:
+      - "traefik.enable=true"
+      # HTTP API y interfaz de administración
+      - "traefik.http.routers.tigase-admin.rule=Host(`redloop.yalovio.com`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.tigase-admin.entrypoints=websecure"
+      - "traefik.http.routers.tigase-admin.tls=true"
+      - "traefik.http.routers.tigase-admin.tls.certresolver=myresolver"
+      - "traefik.http.services.tigase-admin.loadbalancer.server.port=8080"
+      # BOSH
+      - "traefik.http.routers.tigase-bosh.rule=Host(`redloop.yalovio.com`) && PathPrefix(`/bosh`)"
+      - "traefik.http.routers.tigase-bosh.entrypoints=websecure"
+      - "traefik.http.routers.tigase-bosh.tls=true"
+      - "traefik.http.routers.tigase-bosh.tls.certresolver=myresolver"
+      - "traefik.http.services.tigase-bosh.loadbalancer.server.port=5280"
+      # WebSocket
+      - "traefik.http.routers.tigase-ws.rule=Host(`redloop.yalovio.com`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.tigase-ws.entrypoints=websecure"
+      - "traefik.http.routers.tigase-ws.tls=true"
+      - "traefik.http.routers.tigase-ws.tls.certresolver=myresolver"
+      - "traefik.http.services.tigase-ws.loadbalancer.server.port=5290"
+      # Well-known
+      - "traefik.http.routers.tigase-well-known.rule=Host(`redloop.yalovio.com`) && PathPrefix(`/.well-known`)"
+      - "traefik.http.routers.tigase-well-known.entrypoints=websecure"
+      - "traefik.http.routers.tigase-well-known.tls=true"
+      - "traefik.http.routers.tigase-well-known.tls.certresolver=myresolver"
+      - "traefik.http.services.tigase-well-known.loadbalancer.server.port=8080"
+      # Middleware para CORS
+      - "traefik.http.middlewares.cors.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE"
+      - "traefik.http.middlewares.cors.headers.accesscontrolalloworigin=*"
+      - "traefik.http.middlewares.cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.cors.headers.addvaryheader=true"
+      # Aplicar middleware CORS a todas las rutas de Tigase
+      - "traefik.http.routers.tigase-admin.middlewares=cors"
+      - "traefik.http.routers.tigase-bosh.middlewares=cors"
+      - "traefik.http.routers.tigase-ws.middlewares=cors"
+      - "traefik.http.routers.tigase-well-known.middlewares=cors"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
@@ -142,3 +235,4 @@ networks:
 volumes:
   n8n_data:
   postgres_data:
+  letsencrypt:
