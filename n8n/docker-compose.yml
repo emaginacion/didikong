@@ -83,12 +83,14 @@ services:
       - "5281:5281"
       - "5290:5290"
       - "5291:5291"
+      - "9050:9050"
     volumes:
       - ./tigase-server/etc:/home/tigase/tigase-server/etc
       - ./tigase-server/data:/home/tigase/tigase-server/data
       - ./tigase-server/logs:/home/tigase/tigase-server/logs
       - ./tigase-server/certs:/home/tigase/tigase-server/certs
       - ./tigase-server/tigasedb:/home/tigase/tigase-server/tigasedb
+      - ./letsencrypt:/letsencrypt
     environment:
       - PRODUCTION_HEAP_SETTINGS
       - DB_TYPE=postgresql
@@ -97,6 +99,7 @@ services:
       - DB_ROOT_USER=postgres
       - DB_ROOT_PASS=root
       - DEFAULT_VIRTUAL_DOMAIN=redloop.yalovio.com
+      - TLS_KEYSTORE_PATH=/letsencrypt/acme.json
     networks:
       - n8n-network
     healthcheck:
@@ -116,12 +119,6 @@ services:
       nofile:
         soft: 350000
         hard: 350000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.tigase.rule=Host(`redloop.yalovio.com`)"
-      - "traefik.http.routers.tigase.entrypoints=websecure"
-      - "traefik.http.routers.tigase.tls.certresolver=myresolver"
-      - "traefik.http.services.tigase.loadbalancer.server.port=8080"
 
   tigase-db:
     image: postgres:14
