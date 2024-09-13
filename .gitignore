@@ -7,3 +7,5 @@ node_modules/
 .venv/
 tigase/postgres/
 tigase/tigase-server/logs/
+openvpn/openvpn-data/
+openvpn/asano.ovpn
