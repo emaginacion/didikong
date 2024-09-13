@@ -9,14 +9,12 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.openvpn.address=:1194"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=jairo@dosycuarto.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
       - "443:443"
-      - "1194:1194/udp"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "letsencrypt:/letsencrypt"
@@ -32,11 +30,11 @@ services:
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_USER=n8n
       - DB_POSTGRESDB_PASSWORD=n8n
-      - N8N_HOST=SoulVault.yalovio.com
+      - N8N_HOST=soulvault.yalovio.com
       - N8N_PROTOCOL=https
       - NODE_ENV=production
-      - WEBHOOK_URL=https://SoulVault.yalovio.com/
-      - N8N_EDITOR_BASE_URL=https://SoulVault.yalovio.com
+      - WEBHOOK_URL=https://soulvault.yalovio.com/
+      - N8N_EDITOR_BASE_URL=https://soulvault.yalovio.com
       - GENERIC_TIMEZONE=America/New_York
       - N8N_PORT=5678
     ports:
@@ -50,20 +48,19 @@ services:
       - n8n-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.n8n.rule=Host(`SoulVault.yalovio.com`)"
+      - "traefik.http.routers.n8n.rule=Host(`soulvault.yalovio.com`)"
       - "traefik.http.routers.n8n.entrypoints=websecure"
       - "traefik.http.routers.n8n.tls.certresolver=myresolver"
       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
 
   postgres:
-    image: pgvector/pgvector:pg13
+    image: postgres:13
     environment:
       - POSTGRES_USER=n8n
       - POSTGRES_PASSWORD=n8n
       - POSTGRES_DB=n8n
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-vector.sql:/docker-entrypoint-initdb.d/init-vector.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U n8n"]
       interval: 10s
@@ -72,74 +69,6 @@ services:
       start_period: 30s
     networks:
       - n8n-network
-
-  supabase-studio:
-    image: supabase/studio:latest
-    environment:
-      STUDIO_PG_META_URL: http://meta:8081
-      POSTGRES_PASSWORD: n8n
-      DEFAULT_ORGANIZATION: SoulVault
-      DEFAULT_PROJECT: n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-      meta:
-        condition: service_healthy
-    networks:
-      - n8n-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.studio.rule=Host(`studio.SoulVault.yalovio.com`)"
-      - "traefik.http.routers.studio.entrypoints=websecure"
-      - "traefik.http.routers.studio.tls.certresolver=myresolver"
-      - "traefik.http.services.studio.loadbalancer.server.port=3000"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  rest:
-    image: postgrest/postgrest:v10.1.2
-    environment:
-      PGRST_DB_URI: postgres://n8n:n8n@postgres:5432/n8n
-      PGRST_DB_SCHEMA: public
-      PGRST_DB_ANON_ROLE: n8n
-      PGRST_JWT_SECRET: ""
-      PGRST_JWT_AUD: ""
-      PGRST_OPENAPI_SERVER_PROXY_URI: https://api.SoulVault.yalovio.com
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - n8n-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.rest.rule=Host(`api.SoulVault.yalovio.com`)"
-      - "traefik.http.routers.rest.entrypoints=websecure"
-      - "traefik.http.routers.rest.tls.certresolver=myresolver"
-      - "traefik.http.services.rest.loadbalancer.server.port=3000"
-
-  meta:
-    image: supabase/postgres-meta:v0.68.0
-    environment:
-      PG_META_PORT: 8081
-      PG_META_DB_HOST: postgres
-      PG_META_DB_PASSWORD: n8n
-      PG_META_DB_USER: n8n
-      PG_META_DB_NAME: n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - n8n-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8081/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
 
   webserver:
     image: nginx:alpine

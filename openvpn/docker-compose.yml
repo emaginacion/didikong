@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  openvpn:
+    image: kylemanna/openvpn
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+    volumes:
+      - ./openvpn-data:/etc/openvpn
+    environment:
+      - OPENVPN_PROVIDER=custom
+      - OPENVPN_CONFIG=/etc/openvpn/openvpn.conf
+
+networks:
+  default:
+    driver: bridge
