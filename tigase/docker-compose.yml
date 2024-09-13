@@ -3,7 +3,7 @@ services:
     # image: "tigase/tigase-xmpp-server:nightly" # alternative tags: latest-enterprise, nightly and nightly-enterprise
     image: "wojciechkapciatig/tests:nightly" # alternative tags: latest-enterprise, nightly and nightly-enterprise
     restart: unless-stopped
-    hostname: furioso.yalovio.com # change do your domain
+    hostname: msg.soulvault.yalovio.com # change do your domain
     depends_on:
       db:
         condition: service_healthy
@@ -87,7 +87,7 @@ services:
       - --log-file=stdout
       - --min-port=49160
       - --max-port=49200
-      - --realm=furioso.yalovio.com # adjust to the name of the domain pointing to the instance
+      - --realm=msg.soulvault.yalovio.com # adjust to the name of the domain pointing to the instance
       - --user=tigase:tigase # can be adjusted but the same should be used in ext-disco Tigase configuration
       - --lt-cred-mech
       - --fingerprint

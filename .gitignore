@@ -9,3 +9,4 @@ tigase/postgres/
 tigase/tigase-server/logs/
 openvpn/openvpn-data/
 openvpn/asano.ovpn
+n8n/tigase-db/
