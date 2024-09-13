@@ -10,3 +10,9 @@ tigase/tigase-server/logs/
 openvpn/openvpn-data/
 openvpn/asano.ovpn
 n8n/tigase-db/
+n8n/tigase-server/logs/
+n8n/tigase-server/certs/
+n8n/tigase-server/data/
+
+n8n/letsencrypt/
+n8n/tigase-server/
