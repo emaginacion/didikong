@@ -5,16 +5,31 @@ services:
     image: traefik:v2.5
     command:
       - "--api.insecure=true"
+      - "--api.dashboard=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.tigase-http.address=:8080"
+      - "--entrypoints.traefik.address=:8081"  # Definimos el entrypoint 'traefik' en el puerto 8081
+      - "--entrypoints.xmpp-client.address=:5222"
+      - "--entrypoints.xmpp-client-tls.address=:5223"
+      - "--entrypoints.xmpp-server.address=:5269"
+      - "--entrypoints.bosh.address=:5280"
+      - "--entrypoints.websocket.address=:5290"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=jairo@dosycuarto.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
       - "443:443"
+      - "8080:8080"
+      - "8081:8081"  # Exponemos el puerto 8081 para el dashboard de Traefik
+      - "5222:5222"
+      - "5223:5223"
+      - "5269:5269"
+      - "5280:5280"
+      - "5290:5290"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "letsencrypt:/letsencrypt"
@@ -88,6 +103,109 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  tigase:
+    image: tigase/tigase-xmpp-server:latest
+    restart: unless-stopped
+    hostname: msg.soulvault.yalovio.com
+    depends_on:
+      tigase-db:
+        condition: service_healthy
+    volumes:
+      - ./tigase-server/etc:/home/tigase/tigase-server/etc
+      - ./tigase-server/data:/home/tigase/tigase-server/data
+      - ./tigase-server/logs:/home/tigase/tigase-server/logs
+      - ./tigase-server/certs:/home/tigase/tigase-server/certs
+      - ./tigase-server/tigasedb:/home/tigase/tigase-server/tigasedb
+    environment:
+      - DB_TYPE=postgresql
+      - DB_HOST=tigase-db
+      - DB_PORT=5432
+      - DB_ROOT_USER=postgres
+      - DB_ROOT_PASS=root
+      - DEFAULT_VIRTUAL_DOMAIN=msg.soulvault.yalovio.com
+    networks:
+      - n8n-network
+    labels:
+      - "traefik.enable=true"
+      # Interfaz de administración web (8080)
+      - "traefik.http.routers.tigase-web.rule=Host(`admin.msg.soulvault.yalovio.com`)"
+      - "traefik.http.routers.tigase-web.entrypoints=websecure"
+      - "traefik.http.routers.tigase-web.tls.certresolver=myresolver"
+      - "traefik.http.routers.tigase-web.service=tigase-web"
+      - "traefik.http.services.tigase-web.loadbalancer.server.port=8080"
+      # XMPP client-to-server (5222)
+      - "traefik.tcp.routers.tigase-c2s.rule=HostSNI(`msg.soulvault.yalovio.com`)"
+      - "traefik.tcp.routers.tigase-c2s.entrypoints=xmpp-client"
+      - "traefik.tcp.routers.tigase-c2s.tls.certresolver=myresolver"
+      - "traefik.tcp.routers.tigase-c2s.service=tigase-c2s"
+      - "traefik.tcp.services.tigase-c2s.loadbalancer.server.port=5222"
+      # XMPP client-to-server over TLS (5223)
+      - "traefik.tcp.routers.tigase-c2s-tls.rule=HostSNI(`msg.soulvault.yalovio.com`)"
+      - "traefik.tcp.routers.tigase-c2s-tls.entrypoints=xmpp-client-tls"
+      - "traefik.tcp.routers.tigase-c2s-tls.tls.certresolver=myresolver"
+      - "traefik.tcp.routers.tigase-c2s-tls.service=tigase-c2s-tls"
+      - "traefik.tcp.services.tigase-c2s-tls.loadbalancer.server.port=5223"
+      # XMPP server-to-server (5269)
+      - "traefik.tcp.routers.tigase-s2s.rule=HostSNI(`msg.soulvault.yalovio.com`)"
+      - "traefik.tcp.routers.tigase-s2s.entrypoints=xmpp-server"
+      - "traefik.tcp.routers.tigase-s2s.tls.certresolver=myresolver"
+      - "traefik.tcp.routers.tigase-s2s.service=tigase-s2s"
+      - "traefik.tcp.services.tigase-s2s.loadbalancer.server.port=5269"
+      # BOSH (5280)
+      - "traefik.http.routers.tigase-bosh.rule=Host(`msg.soulvault.yalovio.com`)"
+      - "traefik.http.routers.tigase-bosh.entrypoints=bosh"
+      - "traefik.http.routers.tigase-bosh.tls.certresolver=myresolver"
+      - "traefik.http.routers.tigase-bosh.service=tigase-bosh"
+      - "traefik.http.services.tigase-bosh.loadbalancer.server.port=5280"
+      # WebSocket (5290)
+      - "traefik.http.routers.tigase-websocket.rule=Host(`msg.soulvault.yalovio.com`)"
+      - "traefik.http.routers.tigase-websocket.entrypoints=websocket"
+      - "traefik.http.routers.tigase-websocket.tls.certresolver=myresolver"
+      - "traefik.http.routers.tigase-websocket.service=tigase-websocket"
+      - "traefik.http.services.tigase-websocket.loadbalancer.server.port=5290"
+
+  tigase-db:
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+    volumes:
+      - ./tigase-db/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      - n8n-network
+
+  coturn:
+    image: coturn/coturn
+    restart: unless-stopped
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "5349:5349"
+      - "5349:5349/udp"
+      - "8099:8099"
+      - "49160-49200:49160-49200"
+    command:
+      - -n
+      - --log-file=stdout
+      - --min-port=49160
+      - --max-port=49200
+      - --realm=msg.soulvault.yalovio.com
+      - --user=tigase:tigase
+      - --lt-cred-mech
+      - --fingerprint
+      - --external-ip=$(detect-external-ip)
+    volumes:
+      - ./coturn/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./coturn/.cache/data:/var/lib/coturn
+    networks:
+      - n8n-network
 
 networks:
   n8n-network:
