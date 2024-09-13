@@ -1,6 +1,26 @@
 version: "3.8"
 
 services:
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=tu@email.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - n8n-network
+
   n8n:
     image: n8nio/n8n
     environment:
@@ -16,8 +36,6 @@ services:
       - WEBHOOK_URL=https://alamo.yalovio.com/
       - N8N_EDITOR_BASE_URL=https://alamo.yalovio.com
       - GENERIC_TIMEZONE=America/New_York
-    ports:
-      - "5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
@@ -25,6 +43,12 @@ services:
         condition: service_healthy
     networks:
       - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`alamo.yalovio.com`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=myresolver"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
 
   postgres:
     image: postgres:13
@@ -51,14 +75,14 @@ services:
       tigase-db:
         condition: service_healthy
     ports:
-      - "8080:8080"  # HTTP API y interfaz de administración
-      - "5222:5222"  # XMPP client-to-server
-      - "5223:5223"  # XMPP client-to-server over TLS
-      - "5269:5269"  # XMPP server-to-server
-      - "5280:5280"  # BOSH
-      - "5281:5281"  # BOSH over TLS
-      - "5290:5290"  # WebSocket
-      - "5291:5291"  # WebSocket over TLS
+      - "8080:8080"
+      - "5222:5222"
+      - "5223:5223"
+      - "5269:5269"
+      - "5280:5280"
+      - "5281:5281"
+      - "5290:5290"
+      - "5291:5291"
     volumes:
       - ./tigase-server/etc:/home/tigase/tigase-server/etc
       - ./tigase-server/data:/home/tigase/tigase-server/data
@@ -92,6 +116,12 @@ services:
       nofile:
         soft: 350000
         hard: 350000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tigase.rule=Host(`redloop.yalovio.com`)"
+      - "traefik.http.routers.tigase.entrypoints=websecure"
+      - "traefik.http.routers.tigase.tls.certresolver=myresolver"
+      - "traefik.http.services.tigase.loadbalancer.server.port=8080"
 
   tigase-db:
     image: postgres:14
@@ -142,3 +172,4 @@ networks:
 volumes:
   n8n_data:
   postgres_data:
+  letsencrypt:
