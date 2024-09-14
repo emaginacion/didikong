@@ -1,0 +1,39 @@
+admins = [ 'admin', 'mac@redloop.yalovio.com' ]
+'config-type' = 'default'
+debug = [ 'server', 'xmpp.impl', 'db-conn', 'auth' ]
+'default-virtual-host' = 'redloop.yalovio.com'
+dataSource () {
+    default () {
+        uri = 'jdbc:postgresql://tigase-db/tigasedb?user=tigase_user&password=tigase_pass'
+    }
+}
+ext () {}
+'ext-man' () {}
+http () {
+    rest {}
+    setup () {
+        'admin-password' = 'tigase'
+        'admin-user' = 'admin'
+    }
+}
+message {
+    'allow-send-message-from-api' = true
+}
+pubsub () {
+    trusted = [ 'http@{clusterNode}' ]
+}
+rest {
+    commands {
+        'allow-users' = [ 'mac@redloop.yalovio.com' ]
+    }
+}
+security {
+    'api-security-level' = 'RELAXED'
+    'user-status-endpoint' {
+        enabled = true
+        requiredRole = 'admin'
+    }
+}
+'sess-man' () {
+    'spam-filter' (active: false) {}
+}

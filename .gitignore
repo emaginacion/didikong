@@ -15,5 +15,5 @@ n8n/tigase-server/certs/
 n8n/tigase-server/data/
 
 n8n/letsencrypt/
-n8n/tigase-server/
-!/root/didikong/n8n/tigase-server/etc/config.tdsl
+n8n/tigase-server/etc/*
+!n8n/tigase-server/etc/config.tdsl
