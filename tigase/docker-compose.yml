@@ -1,50 +1,115 @@
+version: "3.8"
+
 services:
-  xmpp:
-    # image: "tigase/tigase-xmpp-server:nightly" # alternative tags: latest-enterprise, nightly and nightly-enterprise
-    image: "wojciechkapciatig/tests:nightly" # alternative tags: latest-enterprise, nightly and nightly-enterprise
-    restart: unless-stopped
-    hostname: msg.soulvault.yalovio.com # change do your domain
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=tu@email.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - n8n-network
+
+  n8n:
+    image: n8nio/n8n
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=n8n
+      - N8N_HOST=alamo.yalovio.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://alamo.yalovio.com/
+      - N8N_EDITOR_BASE_URL=https://alamo.yalovio.com
+      - GENERIC_TIMEZONE=America/New_York
+    volumes:
+      - n8n_data:/home/node/.n8n
     depends_on:
-      db:
+      postgres:
+        condition: service_healthy
+    networks:
+      - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`alamo.yalovio.com`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=myresolver"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+      - "traefik.http.routers.n8n.middlewares=n8n-headers"
+      - "traefik.http.middlewares.n8n-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n
+      - POSTGRES_DB=n8n
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - n8n-network
+
+  tigase:
+    image: "wojciechkapciatig/tests:nightly"
+    restart: unless-stopped
+    hostname: redloop.yalovio.com
+    depends_on:
+      tigase-db:
         condition: service_healthy
     ports:
-      - "8080:8080" # for HTTP server (web-based setup, REST API, file upload extension, etc.)
-      - "5222:5222" # incoming client to server XMPP connections
-      - "5223:5223" # incoming client to server XMPP connections over TLS/SSL, including DirectTLS
-      - "5269:5269" # default s2s port, i.e.: federation support
-      - "5270:5270" # default external-component connection port
-      - "5277:5277" # inter-cluster communication
-      - "5280:5280" # default BOSH connections
-      - "5281:5281" # encrypted BOSH connections (over https)
-      - "5290:5290" # default WebSocket connections
-      - "5291:5291" # default WebSocket connections over TLS/SSL
-      - "9050:9050" # JMX Monitoring
+      - "8080:8080"
+      - "5222:5222"
+      - "5223:5223"
+      - "5269:5269"
+      - "5280:5280"
+      - "5281:5281"
+      - "5290:5290"
+      - "5291:5291"
+      - "9050:9050"
     volumes:
       - ./tigase-server/etc:/home/tigase/tigase-server/etc
       - ./tigase-server/data:/home/tigase/tigase-server/data
       - ./tigase-server/logs:/home/tigase/tigase-server/logs
       - ./tigase-server/certs:/home/tigase/tigase-server/certs
       - ./tigase-server/tigasedb:/home/tigase/tigase-server/tigasedb
-#      - ./tigase-server/jars:/home/tigase/tigase-server/jars
+      - ./letsencrypt:/letsencrypt
     environment:
       - PRODUCTION_HEAP_SETTINGS
       - DB_TYPE=postgresql
-      - DB_HOST=db
+      - DB_HOST=tigase-db
       - DB_PORT=5432
       - DB_ROOT_USER=postgres
-      - DB_ROOT_PASS=root # if changed adjust db.environment.POSTGRES_PASSWORD value
-      - DEFAULT_VIRTUAL_DOMAIN= # (optional) set default VHost/domain of the installation (if not set, instance hostname will be used)
-#      - ADMIN_JID # you can define admin-user credentials here and it will be creatd automatically (if not using setup and providing config.tdsl file manually)
-#      - ADMIN_PASSWORD
-#      - HTTP_API_KEY_BOOTSTRAP # optional, bootstrap HTTP component API-KEY
-
+      - DB_ROOT_PASS=root
+      - DEFAULT_VIRTUAL_DOMAIN=redloop.yalovio.com
+      - TLS_KEYSTORE_PATH=/letsencrypt/acme.json
+    networks:
+      - n8n-network
     healthcheck:
-      test: curl --fail http://localhost:8080 || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 30
-
-    # ## High Load settings from https://docs.tigase.net/en/latest/Tigase_Administration/Configuration/_Configuration.html#linux-settings-for-high-load-systems
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     privileged: true
     sysctls:
       net.core.somaxconn: 1024
@@ -58,40 +123,53 @@ services:
         soft: 350000
         hard: 350000
 
-  db:
+  tigase-db:
     image: postgres:14
     restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: root # if changed adjust services.xmpp.environment.DB_ROOT_PASS; database instance is not exposed thus it's inaccessible to outside world
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+    volumes:
+      - ./tigase-db/data:/var/lib/postgresql/data
     healthcheck:
-      test: pg_isready -U postgres
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 30
-    volumes:
-      - ./postgres/data:/var/lib/postgresql/data
+    networks:
+      - n8n-network
 
   coturn:
     image: coturn/coturn
     restart: unless-stopped
-    profiles: ["coturn"]
     ports:
-      - 3478:3478
-      - 3478:3478/udp
-      - 5349:5349
-      - 5349:5349/udp
-      - 8099:8099
-      - 49160-49200:49160-49200
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "5349:5349"
+      - "5349:5349/udp"
+      - "8099:8099"
+      - "49160-49200:49160-49200"
     command:
       - -n
       - --log-file=stdout
       - --min-port=49160
       - --max-port=49200
-      - --realm=msg.soulvault.yalovio.com # adjust to the name of the domain pointing to the instance
-      - --user=tigase:tigase # can be adjusted but the same should be used in ext-disco Tigase configuration
+      - --realm=redloop.yalovio.com
+      - --user=tigase:tigase
       - --lt-cred-mech
       - --fingerprint
-      - --external-ip=$$(detect-external-ip)
+      - --external-ip=$(detect-external-ip)
     volumes:
       - ./coturn/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
       - ./coturn/.cache/data:/var/lib/coturn
+    networks:
+      - n8n-network
+
+networks:
+  n8n-network:
+    driver: bridge
+
+volumes:
+  n8n_data:
+  postgres_data:
+  letsencrypt:
