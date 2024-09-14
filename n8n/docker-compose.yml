@@ -12,7 +12,6 @@ services:
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=tu@email.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--log.level=DEBUG"  # Aumentar el nivel de log para depuración
     ports:
       - "80:80"
       - "443:443"
@@ -38,7 +37,6 @@ services:
       - WEBHOOK_URL=https://alamo.yalovio.com/
       - N8N_EDITOR_BASE_URL=https://alamo.yalovio.com
       - GENERIC_TIMEZONE=America/New_York
-      - N8N_LOG_LEVEL=debug  # Aumentar el nivel de log para depuración
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
