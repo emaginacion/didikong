@@ -11,6 +11,7 @@
     "btoa": "^1.2.1",
     "buffer": "^6.0.3",
     "express": "^4.17.1",
+    "node-fetch": "^2.7.0"
   },
   "scripts": {
     "start": "node xmpp-api.js"

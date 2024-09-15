@@ -1,15 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { client, xml } = require('@xmpp/client');
+const fetch = require('node-fetch');
 
-// Implementación de atob y btoa para Node.js
-global.atob = function(b64Encoded) {
-    return Buffer.from(b64Encoded, 'base64').toString('binary');
-};
-
-global.btoa = function(str) {
-    return Buffer.from(str, 'binary').toString('base64');
-};
+global.atob = require('atob');
+global.btoa = require('btoa');
 
 // Desactiva la verificación de certificados autofirmados
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -26,14 +21,8 @@ const xmpp = client({
   password: 'Koko1010',
 });
 
-// Almacenar el webhook URL
-let webhookUrl = '';
-
-// Ruta para configurar el webhook
-app.post('/set-webhook', (req, res) => {
-  webhookUrl = req.body.url;
-  res.json({ message: 'Webhook configurado correctamente' });
-});
+// Configurar el webhook URL de n8n
+const webhookUrl = 'https://alamo.yalovio.com/webhook/277d7705-19f8-41bb-8a31-15e435fd0f31';
 
 // Ruta para enviar mensajes
 app.post('/send-message', async (req, res) => {
@@ -73,20 +62,19 @@ xmpp.on('stanza', async (stanza) => {
     const body = stanza.getChildText('body');
     console.log(`Mensaje recibido de ${from}: ${body}`);
 
-    // Enviar al webhook si está configurado
-    if (webhookUrl) {
-      try {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, body }),
-        });
-        if (!response.ok) {
-          console.error('Error al enviar al webhook:', await response.text());
-        }
-      } catch (error) {
-        console.error('Error al enviar al webhook:', error);
+    // Enviar al webhook de n8n
+    try {
+      const response = await fetch(`${webhookUrl}?from=${encodeURIComponent(from)}&body=${encodeURIComponent(body)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        console.error('Error al enviar al webhook:', await response.text());
+      } else {
+        console.log('Mensaje enviado exitosamente al webhook de n8n');
       }
+    } catch (error) {
+      console.error('Error al enviar al webhook:', error);
     }
   }
 });

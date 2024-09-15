@@ -1,19 +1,8 @@
-version: "3.8"
-
+version: '3'
 services:
   my-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - PORT=3333
-      - WEBHOOK_URL=http://localhost:3333/webhook  # Ajusta esto según tus necesidades
+    build: .
     ports:
       - "3333:3333"
-    volumes:
-      - .:/usr/src/app
-    command: node xmpp-api.js
-
-networks:
-  default:
-    driver: bridge
+    environment:
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
