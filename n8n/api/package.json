@@ -1,0 +1,19 @@
+{
+  "name": "xmpp-api",
+  "version": "1.0.0",
+  "main": "xmpp-api.js",
+  "dependencies": {
+    "@xmpp/client": "^0.13.1",
+    "@xmpp/debug": "^0.13.0",
+    "atob": "^2.1.2",
+    "axios": "^0.21.1",
+    "body-parser": "^1.19.0",
+    "btoa": "^1.2.1",
+    "buffer": "^6.0.3",
+    "express": "^4.17.1",
+    "node-xmpp-client": "^3.2.0"
+  },
+  "scripts": {
+    "start": "node xmpp-api.js"
+  }
+}

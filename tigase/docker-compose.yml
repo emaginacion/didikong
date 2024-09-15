@@ -2,6 +2,7 @@ version: "3.8"
 
 services:
   traefik:
+    # Configuración de Traefik sin cambios
     image: traefik:v2.5
     command:
       - "--api.insecure=true"
@@ -22,6 +23,7 @@ services:
       - n8n-network
 
   n8n:
+    # Configuración de n8n sin cambios
     image: n8nio/n8n
     environment:
       - DB_TYPE=postgresdb
@@ -54,6 +56,7 @@ services:
       - "traefik.http.middlewares.n8n-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
 
   postgres:
+    # Configuración de PostgreSQL sin cambios
     image: postgres:13
     environment:
       - POSTGRES_USER=n8n
@@ -71,6 +74,7 @@ services:
       - n8n-network
 
   tigase:
+    # Configuración de Tigase sin cambios
     image: "wojciechkapciatig/tests:nightly"
     restart: unless-stopped
     hostname: redloop.yalovio.com
@@ -124,6 +128,7 @@ services:
         hard: 350000
 
   tigase-db:
+    # Configuración de la base de datos de Tigase sin cambios
     image: postgres:14
     restart: unless-stopped
     environment:
@@ -140,6 +145,7 @@ services:
       - n8n-network
 
   coturn:
+    # Configuración de Coturn sin cambios
     image: coturn/coturn
     restart: unless-stopped
     ports:
@@ -162,6 +168,21 @@ services:
     volumes:
       - ./coturn/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
       - ./coturn/.cache/data:/var/lib/coturn
+    networks:
+      - n8n-network
+
+  xmpp-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3333
+      - WEBHOOK_URL=http://n8n:5678/webhook
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./api:/usr/src/app
+    command: node xmpp-api.js
     networks:
       - n8n-network
 
