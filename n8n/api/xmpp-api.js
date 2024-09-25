@@ -22,7 +22,8 @@ const xmpp = client({
 });
 
 // Configurar el webhook URL de n8n
-const webhookUrl = 'https://alamo.yalovio.com/webhook/277d7705-19f8-41bb-8a31-15e435fd0f31';
+//const webhookUrl = 'https://alamo.yalovio.com/webhook/277d7705-19f8-41bb-8a31-15e435fd0f31';
+const webhookUrl = 'https://alamo.yalovio.com/webhook-test/277d7705-19f8-41bb-8a31-15e435fd0f31';
 
 // Ruta para enviar mensajes
 app.post('/send-message', async (req, res) => {

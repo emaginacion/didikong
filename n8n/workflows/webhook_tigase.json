@@ -1,0 +1,93 @@
+{
+    "name": "api paso 1",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "4075d8a1-471e-49b9-ad62-2b83d41bbf87",
+        "name": "When clicking ‘Test workflow’",
+        "type": "n8n-nodes-base.manualTrigger",
+        "position": [
+          500,
+          360
+        ],
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://soulvault.yalovio.com:3333/send-message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "to",
+                "value": "=iphone@redloop.yalovio.com"
+              },
+              {
+                "name": "body",
+                "value": "=Echo: {{ $json.query.body }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "cfede5d1-1ede-412e-9c39-383beaacef45",
+        "name": "HTTP Request",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          840,
+          60
+        ]
+      },
+      {
+        "parameters": {
+          "path": "277d7705-19f8-41bb-8a31-15e435fd0f31",
+          "options": {}
+        },
+        "id": "cbd56aee-8880-4754-bcaa-f4f4728e661a",
+        "name": "Webhook1",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          620,
+          60
+        ],
+        "webhookId": "277d7705-19f8-41bb-8a31-15e435fd0f31"
+      }
+    ],
+    "pinData": {},
+    "connections": {
+      "Webhook1": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": true,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "ba361569-1b94-46fa-a40a-b4a62d7e01f2",
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "638fbd810c1d6f26bcdaf10691731f9bc04fdd7a92e89bdca5cb2c5b57a84980"
+    },
+    "id": "0XqnmopmqtJ4MeIP",
+    "tags": []
+  }
