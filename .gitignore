@@ -17,3 +17,10 @@ n8n/tigase-server/data/
 n8n/letsencrypt/
 n8n/tigase-server/etc/*
 !n8n/tigase-server/etc/config.tdsl
+gitea/gitea-db/
+gitea/gitea/ssh
+gitea/gitea/git/
+gitea/gitea/gitea/conf/
+n8n//gitea/
+gitea/
+n8n/gitea-db/
