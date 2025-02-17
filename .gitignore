@@ -24,3 +24,4 @@ gitea/gitea/gitea/conf/
 n8n//gitea/
 gitea/
 n8n/gitea-db/
+n8n/qdrant_storage/

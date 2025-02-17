@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  narration-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./sample_es:/app/sample_es
+    environment:
+      - TORCH_DEVICE=cpu
